@@ -1,0 +1,84 @@
+function [prs_i,prs_j] = solve_prs_with_constant_linepack(min_alp,K_wey,new_q,newGCV,D,L,Prs_stp,...
+    T_stp,T_gas,Z_pipe,prs_min)
+
+% Unknowns: x(1)=prs_i, x(2)=prs_j  (bar)
+x0 = [max(prs_min + 1, 50); prs_min];  % a reasonable initial guess
+lb = [-prs_min; prs_min];              % enforce minimum pressure bounds
+ub = [Inf; Inf];
+
+opts = optimoptions('fsolve', ...
+    'Display','none', ...
+    'FunctionTolerance',1e-10, ...
+    'StepTolerance',1e-10);
+
+% Solve with bounds -> use lsqnonlin if you want strict bounds
+% Here I'll show lsqnonlin (more robust for bounds)
+opts2 = optimoptions('lsqnonlin','Display','none');
+
+[x, resnorm, residual, exitflag, output] = lsqnonlin(@residual_fun, x0, lb, ub, opts2);
+
+prs_i = x(1);
+prs_j = x(2);
+
+info.resnorm  = resnorm;
+info.residual = residual;
+info.exitflag = exitflag;
+info.output   = output;
+
+    function F = residual_fun(x)
+        pi = x(1);
+        pj = x(2);
+
+        % Eq(1): Weymouth consistency (bar + mcm/day)
+        % pi^2 - pj^2 = (q/K)^2
+        F1 = (pi^2 - pj^2) - (new_q / K_wey)^2;
+
+        % Eq(2): available linepack equals target min_alp
+        alp = available_linepack(pi, pj);
+        F2 = alp - min_alp;
+
+        F = [F1; F2];
+    end
+
+    function alp = available_linepack(pi, pj)
+        % current linepack (TJ)
+        lp_now = linepack_TJ(pi, pj);
+
+        % minimum linepack at same flow with outlet at prs_min (TJ)
+        pj_min = prs_min;
+        pi_min = sqrt(pj_min^2 + (new_q / K_wey)^2);
+
+        lp_min = linepack_TJ(pi_min, pj_min);
+
+        alp = lp_now - lp_min;
+    end
+
+    function lp = linepack_TJ(pi, pj)
+        % average pressure (bar)
+        p_avg = (2/3) * (pi + pj - (pi*pj)/(pi + pj));
+
+        V = (pi_const() * D^2 / 4) * L;   % m^3 (geometric)
+        p_std_bar = Prs_stp / 1e5;
+
+        V_std = V * (p_avg / p_std_bar) * (T_stp / T_gas) / Z_pipe; % Sm^3
+        lp = V_std * newGCV / 1e12;  % TJ
+    end
+
+    function c = pi_const()
+        c = 3.141592653589793;
+    end
+end
+% 
+% avrgPrs = 2/3 * (prs_i + prs_j - prs_i * prs_j/(prs_i + prs_j));
+% V = pi * D^2 / 4 * L;
+% V_std = V * (avrgPrs / (Prs_stp/1e5)) * (T_stp / T_gas) / Z_pipe;
+% linepack = V_std * newGCV / 1e12; % TJ
+% 
+% % min linepack energy
+% prs_j_min = prs_min;
+% prs_i_min = sqrt( prs_j_min^2 + (new_q / K_wey)^2 );
+% avrgPrs = 2/3 * (prs_i_min + prs_j_min - prs_i_min * prs_j_min/(prs_i_min + prs_j_min));
+% V = pi * D^2 / 4 * L;
+% V_std = V * (avrgPrs / (Prs_stp/1e5)) * (T_stp / T_gas) / Z_pipe;
+% linepackEnergy_min = V_std * newGCV / 1e12; % TJ
+% avaliable_linepack = linepack - linepackEnergy_min;

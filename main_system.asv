@@ -1,0 +1,48 @@
+%% evalaute the system flexibility
+% load the default energy system data
+clear
+clc
+
+mpc = data_reader_writer();
+save stop1.mat
+%%
+clear
+clc
+load stop1.mat
+% testrun GB power system
+GB_power_system = GBreducednetwork();
+% [test_results] = runopf(GB_power_system);
+
+% test run opf
+mpopt = mpoption('model','DC');
+% mpc.gen = GB_power_system.gen;
+% mpc.gencost = GB_power_system.gencost;
+% mpc.bus = GB_power_system.bus;
+mpc.branch = GB_power_system.branch;
+[test_results] = runopf(mpc,mpopt);
+[test_results_ge] = runopf_ge(mpc);
+[test_results_hge] = runopf_hge(mpc);
+isequal(mpc.branch, GB_power_system.branch)
+[idx_row, idx_col] = find(mpc.branch ~= GB_power_system.branch);
+
+% get the load and renewable profiles (so won't have to be infered from
+% weather, and to the node scale
+iYear = 2020;
+historicalYearData = readYearlyHistoricalData(iYear,mpc);
+
+% set hydrogen fraction
+hyFrac = 0:0.1:1;
+nDay = 365;
+
+for ihy = 1:size(hyFrac,1)
+    for iDay = 1:nDay
+        % get the boundary conditions
+        [dailyProfile] = getDailyProfile(iDay,historicalYearData);
+        % run joint uc
+        [results] = unitCommitmentUK(mpc,dailyProfile);
+    end
+end
+
+% calculate expected system condition
+
+%

@@ -1,0 +1,59 @@
+% function [] = plot_UK_energy_system(mpc)
+
+colors = orderedcolors("gem12");
+iGd = find(mpc.Gbus(:,3)~=0);
+iGs = mpc.Gsou(:,1);
+GBlat = mpc.Gbus_extra.Lat; GBlon = mpc.Gbus_extra.Lon;
+
+fig = figure;
+geoplot(GBlat, GBlon, '.', 'MarkerSize', 16, 'MarkerEdgeColor', colors(1,:),'LineWidth', 1.5); % 蓝 - 一般节点
+hold on;
+geoplot(GBlat(iGd), GBlon(iGd), '.', 'MarkerSize', 16, 'MarkerEdgeColor', colors(2,:),'LineWidth', 1.5);% 红- 负荷节点
+geoplot(GBlat(iGs), GBlon(iGs), '.', 'MarkerSize', 16, 'MarkerEdgeColor', colors(3,:),'LineWidth', 1.5);% 黄- 气源节点
+geobasemap streets-light; % 加底图
+title('GB gas system in 2020');
+
+% add gas pipe
+fb_index = mpc.Gline(:,1); tb_index = mpc.Gline(:,2);
+for i = 1:size(mpc.Gline,1)
+    geoplot([GBlat(fb_index(i)) GBlat(tb_index(i))], [GBlon(fb_index(i)) GBlon(tb_index(i))], ...
+        '-', 'Color',colors(3,:), 'LineWidth', 1.5);
+end
+
+% 标注节点属性
+for i = 1:length(GBlat)
+    text(GBlat(i), GBlon(i), "GB" + "" + string(i), 'FontSize', 10, 'Color', 'k', ...
+        'HorizontalAlignment', 'left', 'VerticalAlignment', 'top');
+end
+
+% 标注管道属性
+offset = 0.02;  % 经验值：你可以调小/调大
+
+for i = 1:size(mpc.Gline,1)
+    lat1 = GBlat(fb(i)); lon1 = GBlon(fb(i));
+    lat2 = GBlat(tb(i)); lon2 = GBlon(tb(i));
+
+    latm = (lat1 + lat2)/2;
+    lonm = (lon1 + lon2)/2;
+
+    % 计算一个法向偏移（简单做法，不用严格测地线）
+    dx = lon2 - lon1;
+    dy = lat2 - lat1;
+    n  = sqrt(dx^2 + dy^2) + eps;
+    nx = -dy / n;
+    ny =  dx / n;
+
+    latm2 = latm + offset * ny;
+    lonm2 = lonm + offset * nx;
+
+    geotext(latm2, lonm2, sprintf('%.2f', mpc.Gline(i)), ...
+        'FontSize', 9, 'Color', 'k', ...
+        'BackgroundColor','w', 'Margin',1, ...
+        'HorizontalAlignment','center');
+end
+
+
+fig.Position = [100,100,600,800];
+% exportgraphics(gcf, 'figs/fig UK gas system 2020.pdf', 'ContentType', 'vector');
+
+% end
