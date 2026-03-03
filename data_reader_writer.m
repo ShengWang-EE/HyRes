@@ -1,14 +1,14 @@
 function mpc1 = data_reader_writer(option)
-% 根据pypsa里面读取数据的文件的框架翻译过来
-% pypsa里面的太复杂了，先做出个MVP，再添加细节吧
-% 还是按照matpower调整吧，这样方便debug
-% 设置多种模式，一种是输出纯电力系统，一种是输出电力天然气系统（主要是gencost）
+% ??pypsa????????????????
+% pypsa???????,????MVP,??????
+% ????matpower???,????debug
+% ??????,??????????,????????????(???gencost)
 %%
 % clc
 % clear
 
 %% electricity demand
-% preprocess_UK_power_demand_data(); % 将gridwatch的raw data预处理
+% preprocess_UK_power_demand_data(); % ?gridwatch?raw data???
 gridwatch_data = readtable('data\power demand (from gridwatch)\power demand 2011-2025 (halfhour).csv');
 
 % accroding to date range sort out data (valid year from 2012-2024)
@@ -17,7 +17,7 @@ selected_date = (gridwatch_data.timestamp >= start_date) & (gridwatch_data.times
 electricity_system_data = gridwatch_data(selected_date,:);
 electricity_system_data.demand = fillmissing( ...
     electricity_system_data.demand, 'linear');
-demandDistributionInfo = readtable('PyPSA-GB/data/demand/Demand_Distribution.csv');
+demandDistributionInfo = readtable('data/PyPSA-GB/data/demand/Demand_Distribution.csv');
 
 electricity_nodal_demand = demandDistributionInfo.Var2(2:end)/sum(demandDistributionInfo.Var2(2:end)) * electricity_system_data.demand';
 
@@ -30,7 +30,7 @@ mean_electric_demand = mean(electricity_nodal_demand,2);
 %% bus
 % property needed: BusID	Type	Pd	Qd	Gs	Bs	ESystemID	Vm	Va	BaseKV	Zone	Vmax	Vmin
 bus_ref = readtable('data/GB energy network v1.xlsx','Sheet','bus','Range','A1:M30');
-busInfo = readtable('PyPSA-GB/data/network/BusesBasedGBsystem/buses.csv'); % 包含联络线，等效成发电机
+busInfo = readtable('data/PyPSA-GB/data/network/BusesBasedGBsystem/buses.csv'); % ?????,??????
 [busInfo.name, busInfo.carrier] = deal(string(busInfo.name), string(busInfo.carrier));
 
 nb = size(find(busInfo.carrier == "AC"),1);
@@ -58,8 +58,8 @@ mpc.bus = bus;
 mpc.bus_extra = bus_extra;
 %% branch/line
 % property: FromBus	ToBus	R	X	b	RateA	RateB	RateC	K	Angle	Status	ang_min	ang_max
-branch_ref = readtable('GB energy network v1.xlsx','Sheet','branch','Range','A1:M100');
-branchInfo = readtable('PyPSA-GB/data/network/BusesBasedGBsystem/lines.csv');
+branch_ref = readtable('data/GB energy network v1.xlsx','Sheet','branch','Range','A1:M100');
+branchInfo = readtable('data/PyPSA-GB/data/network/BusesBasedGBsystem/lines.csv');
 n_branch = size(branchInfo,1);
 
 branch = array2table(zeros(n_branch,13),'VariableNames',{'FromBus','ToBus','r','x','b','RateA','RateB','RateC','K','Angle','Status','ang_min','ang_max'});
@@ -77,12 +77,12 @@ branch_extra.fbName = branchInfo.bus0; branch_extra.tbName = branchInfo.bus1;
 mpc.branch = branch;
 mpc.branch_extra = struct2table(branch_extra);
 %% gen
-% gen所在的bus按照距离最近判断
+% gen???bus????????
 % property: BusID	Pg	Qg	Qmax	Qmin	Vg	mBase	Status	Pmax	Pmin	Pc1	Pc2	Qc1min	Qc1max	Qc2min	Qc2max	RampRate	ramp_10	ramp_30	ramp_q	apf
 
 % gen = readtable('GB energy network v1.xlsx','Sheet','gen','Range','A1:U67');
 % gencost = readtable('GB energy network v1.xlsx','Sheet','gencost','Range','A1:G67');
-genInfo = readtable('PyPSA-GB/data/power stations/power_stations_locations_2020.csv');
+genInfo = readtable('data/PyPSA-GB/data/power stations/power_stations_locations_2020.csv');
 n_gen = size(genInfo,1);
 
 gen = array2table(zeros(n_gen,21),'VariableNames',{'BusID','Pg','Qg','Qmax','Qmin','Vg','mBase','Status','Pmax', ...
@@ -95,8 +95,8 @@ end
 
 gen.Pmax = genInfo.InstalledCapacity_MW_; gen.Pmin =zeros(size(genInfo,1),1);
 % ramp
-genFuelInfo = readtable('PyPSA-GB/data/generator_data_by_fuel.csv');
-fuelCostInfo = readtable('PyPSA-GB/data/marginal_cost_data.xlsx');
+genFuelInfo = readtable('data/PyPSA-GB/data/generator_data_by_fuel.csv');
+fuelCostInfo = readtable('data/PyPSA-GB/data/marginal_cost_data.xlsx');
 for i = 1:size(genInfo,1)
     iType = find(genInfo.Fuel(i) == string(genFuelInfo.fuel));
     if isempty(iType)
@@ -120,7 +120,7 @@ for i = 1:size(genInfo,1)
 end
 gen_extra.fuel = genInfo.Fuel; gen_extra.tech = genInfo.Technology;
 gencost_extra = struct2table(gencost_extra);
-% 补充其他gen property
+% ????gen property
 gen.Vg = ones(n_gen,1);
 gen.mBase = 100*ones(n_gen,1);
 gen.Status = ones(n_gen,1);
@@ -135,23 +135,23 @@ gencost.CostA = zeros(n_gen,1);
 gencost.CostB = gencost_extra.marginal;
 gencost.CostC = zeros(n_gen,1);
 
-%% renewable (tidal之类的考虑在未来场景里，现在没有）
+%% renewable (tidal???????????,????)
 % solar
-solarInfo = readtable('\PyPSA-GB\data\renewables\atlite\inputs\Solar_Photovoltaics\Solar_Photovoltaics_2020.csv');
+solarInfo = readtable('data/PyPSA-GB/data/renewables/atlite/inputs/Solar_Photovoltaics/Solar_Photovoltaics_2020.csv');
 nSolar = size(solarInfo,1);
 for i = 1:nSolar
     [~, solar.bus(i,1)] = min(distance(solarInfo.y(i),solarInfo.x(i),bus_extra.lat,bus_extra.lon));
 end
 solar.capacity = solarInfo.InstalledCapacity_MWelec_;
 % onshore wind 
-onshoreWindInfo = readtable('\PyPSA-GB\data\renewables\atlite\inputs\Wind_Onshore\Wind_Onshore_2020.csv');
+onshoreWindInfo = readtable('data/PyPSA-GB/data/renewables/atlite/inputs/Wind_Onshore/Wind_Onshore_2020.csv');
 nOnshoreWind = size(onshoreWindInfo,1);
 for i = 1:nOnshoreWind
     [~, onshoreWind.bus(i,1)] = min(distance(onshoreWindInfo.y(i),onshoreWindInfo.x(i),bus_extra.lat,bus_extra.lon));
 end
 onshoreWind.capacity = onshoreWindInfo.TurbineCapacity_MW_ .* onshoreWindInfo.No_OfTurbines;
 % offshore wind
-offshoreWindInfo = readtable('\PyPSA-GB\data\renewables\atlite\inputs\Wind_Offshore\Wind_Offshore_2020.csv');
+offshoreWindInfo = readtable('data/PyPSA-GB/data/renewables/atlite/inputs/Wind_Offshore/Wind_Offshore_2020.csv');
 nOffshoreWind = size(offshoreWindInfo,1);
 for i = 1:nOffshoreWind
     [~, offshoreWind.bus(i,1)] = min(distance(offshoreWindInfo.y(i),offshoreWindInfo.x(i),bus_extra.lat,bus_extra.lon));
@@ -174,15 +174,21 @@ renewable = struct2table(renewable);
 
 % update according to renewable profile
 year = 2020;
-solar_output_data1 = readtable("\PyPSA-GB\data\renewables\atlite\outputs\PV\PV_"+year+"_1.csv");
-solar_output_data2 = readtable("\PyPSA-GB\data\renewables\atlite\outputs\PV\PV_"+year+"_2.csv");
-solar_output_data3 = readtable("\PyPSA-GB\data\renewables\atlite\outputs\PV\PV_"+year+"_3.csv");
-solar_output_data4 = readtable("\PyPSA-GB\data\renewables\atlite\outputs\PV\PV_"+year+"_4.csv");
-solar_output_data = [solar_output_data1;solar_output_data2;solar_output_data3;solar_output_data4];
-onshorewind_output_data = readtable("\PyPSA-GB\data\renewables\atlite\outputs\Wind_Onshore\Wind_Onshore_"+year+".csv");
-offshorewind_output_data = readtable("\PyPSA-GB\data\renewables\atlite\outputs\Wind_Offshore\Wind_Offshore_"+year+".csv");
+solar_output_data1 = readtable("data/PyPSA-GB/data/renewables/atlite/outputs/PV/PV_"+year+"_1.csv");
+solar_output_data2 = readtable("data/PyPSA-GB/data/renewables/atlite/outputs/PV/PV_"+year+"_2.csv");
+solar_output_data3 = readtable("data/PyPSA-GB/data/renewables/atlite/outputs/PV/PV_"+year+"_3.csv");
+solar_output_data4 = readtable("data/PyPSA-GB/data/renewables/atlite/outputs/PV/PV_"+year+"_4.csv");
+solar_output_data = [ ...
+    table2array(solar_output_data1(:,2:end)); ...
+    table2array(solar_output_data2(:,2:end)); ...
+    table2array(solar_output_data3(:,2:end)); ...
+    table2array(solar_output_data4(:,2:end))];
+onshorewind_output_data = readtable("data/PyPSA-GB/data/renewables/atlite/outputs/Wind_Onshore/Wind_Onshore_"+year+".csv");
+offshorewind_output_data = readtable("data/PyPSA-GB/data/renewables/atlite/outputs/Wind_Offshore/Wind_Offshore_"+year+".csv");
 
-mean_renewable_capacity = [table2array(mean(solar_output_data(:,2:end),1)),table2array(mean(onshorewind_output_data(:,2:end),1)),table2array(mean(offshorewind_output_data(:,2:end),1))];
+onshorewind_output_matrix = table2array(onshorewind_output_data(:,2:end));
+offshorewind_output_matrix = table2array(offshorewind_output_data(:,2:end));
+mean_renewable_capacity = [mean(solar_output_data,1,'omitnan'), mean(onshorewind_output_matrix,1,'omitnan'), mean(offshorewind_output_matrix,1,'omitnan')];
 renewable.Pmax = mean_renewable_capacity';
 
 % aggregate renewables
@@ -221,7 +227,7 @@ renewable_agg_cost.CostA = zeros(n_renewable_agg,1);
 renewable_agg_cost.CostB = zeros(n_renewable_agg,1);
 renewable_agg_cost.CostC = zeros(n_renewable_agg,1);
 
-mpc.gencost = [gencost; renewable_agg_cost]; % 补足聚合后的成本
+mpc.gencost = [gencost; renewable_agg_cost]; % ????????
 
 %% interconnector/link (2020 scenario)
 % interconnectorInfo = readtable('PyPSA-GB/data/interconnectors/links.csv');
@@ -249,7 +255,7 @@ gas_demand_nodal = gas_demand_mean * gas_demand_distribution_factor; % distribut
 mpc.Gbus.Demand = gas_demand_nodal;
 %% pipeline
 Gline = readtable('data/GB energy network v1.xlsx','sheet','Gline','range','A1:J91');
-% 计算C (from chatgpt)
+% ??C (from chatgpt)
 Gline.C = 2.85* Gline.Diameter.^(8/3) ./ sqrt(Gline.Length);
 Gline.C(string(Gline.Topology) ~= "Pipeline") = 999;
 
@@ -279,7 +285,7 @@ for i = 1:n_gpp
     i_gen = i_gpp(i);
     [~, mpc.gen_extra.gas_bus(i_gen)] = min(distance(gen_extra.lat(i_gen),gen_extra.lon(i_gen),Gbus.Lat,Gbus.Lon));
 end
-%% 转化为普通mpc
+%% ?????mpc
 mpc.baseMVA = 100;
 mpc1 = mpc;
 mpc1.baseMVA = 100;

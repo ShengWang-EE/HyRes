@@ -2,6 +2,8 @@
 clear
 clc
 
+startup();
+
 mpc_e = data_reader_writer(1); % power system data only
 mpc_ge = data_reader_writer(2); % gas system also
 save stop1.mat
@@ -10,15 +12,18 @@ clear
 clc
 load stop1.mat
 % 2.1 testrun GB power system from mpc provided by other people
-GB_power_system = GBreducednetwork();
-[test_results] = runopf(GB_power_system);
+% GB_power_system = GBreducednetwork();
+% [test_results] = runopf(GB_power_system);
 
 % 2.2 test run electricity opf with our data
-mpopt = mpoption('model','DC');
-[test_results] = runopf(mpc_e,mpopt);
+% mpopt = mpoption('model','DC');
+% [test_results] = runopf(mpc_e,mpopt);
 
 % 2.3 test run electricity and gas opf with our data
-[test_results_ge] = runopf_ge(mpc_ge);
+mpopt.hydrogen_fraction = 0.2;
+[test_results_ge] = runopf_ge(mpc_ge,mpopt);
+
+% 2.4 test run electricity and gas opf with fixed hydrogen
 
 
 % [test_results_hge] = runopf_hge(mpc_ge);
@@ -27,7 +32,11 @@ mpopt = mpoption('model','DC');
 
 % 3.1 select a stressful time point in 2025 in winter with high electricity and gas demand
 
+% 3.2 create ppc file on that time point
 
+% 3.3 run steady-state fix hy fraction OEF
+
+% 3.4 organise the results and plot fig
 
 
 

@@ -54,6 +54,7 @@ R.all = Rgas ./ M.all;
 [R.CH4, R.C2H6, R.C3H8, R.C4H10, R.hy, R.N2, R.CO2] = deal(...
     Rgas./M.CH4, Rgas./M.C2H6, Rgas./M.C3H8, Rgas./M.C4H10, Rgas./M.hy, Rgas./M.N2, Rgas./M.CO2);
 R.ng = Rgas / M.ng;
+R.gas = Rgas;
 T_stp = 288.15;            % K, (15°C)
 Prs_stp = 101325;          % Pa
 Z_gas = 0.9;               % dimenssionless

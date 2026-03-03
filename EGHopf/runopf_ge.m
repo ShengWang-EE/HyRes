@@ -1,4 +1,4 @@
-function [solution, info] = runopf_ge(mpc)
+function [solution, info] = runopf_ge(mpc,mpopt)
 %RUNOPF_GE  Integrated electricity-gas OPF (DC power flow + gas network)
 % Two-stage solve:
 %   Stage 1: convex relaxation (delta-based)
@@ -14,6 +14,9 @@ function [solution, info] = runopf_ge(mpc)
 [F_BUS, T_BUS, BR_R, BR_X, BR_B, RATE_A, RATE_B, RATE_C, ...
  TAP, SHIFT, BR_STATUS, PF, QF, PT, QT, MU_SF, MU_ST, ...
  ANGMIN, ANGMAX, MU_ANGMIN, MU_ANGMAX] = idx_brch; %#ok<ASGLU>
+
+ %% --------------------------- parameters ---------------------------------
+[GCV, M, fs, a, R, T_stp, Prs_stp, Z_stp, rho_stp, Z_gas, T_gas, eta, CDF] = initializeParameters();
 
 % active electric branches for DC thermal limits
 i_line_lim = find(mpc.branch(:, RATE_A) ~= 0 & mpc.branch(:, RATE_A) < 1e10);
@@ -48,10 +51,15 @@ n_comp = numel(i_comp);
 % gas link endpoints & coefficients
 fb = mpc.Gline(:, 1);
 tb = mpc.Gline(:, 2);
-C  = mpc.Gline(:, 3);
 
-%% --------------------------- parameters ---------------------------------
-[GCV, ~, ~, ~, ~, ~, ~, ~, ~, eta, ~] = initializeParameters();
+% update Weymouth equation parameters according to fixed hydrogen fraction
+% C 正比于sqrt(R)
+C_ng  = mpc.Gline(:, 3);
+hy_frac = mpopt.hydrogen_fraction;
+M_mix = hy_frac * M.hy + (1-hy_frac) * M.ng;
+R_mix = R.gas / M_mix;
+C = C_ng / sqrt(R.ng) * sqrt(R_mix);
+
 
 k_comp = 0.03;          % compressor gas consumption coefficient
 comp_ratio_min = 1.0;
@@ -266,6 +274,7 @@ end
 
 opts_stage2 = sdpsettings('solver', 'gurobi', 'usex0', 1);
 opts_stage2.gurobi.NonConvex = 2;
+opts_stage2.gurobi.MIPGap = 0.01;  % 1% optimality gap to speed up
 
 info.stage2 = optimize(cons_stage2, obj_stage2, opts_stage2);
 
